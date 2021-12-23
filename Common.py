@@ -26,7 +26,12 @@ class AckResult(Enum):
 
 def make_packet(data: bytes) -> Optional[bytes]:
     size = len(data)
-    if size > Define.MAX_SEG_LEN:
-        print(f"Size limit {Define.MAX_SEG_LEN} bytes")
+    if size > MAX_SEG_LEN:
+        print(f"Size limit {MAX_SEG_LEN} bytes")
         return None
     return size.to_bytes(size, byteorder='big') + data
+
+
+def verify_cb(conn, cert, errnum, depth, ok):
+    print(f'Got certificate: {cert.get_subject()}')
+    return ok

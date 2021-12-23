@@ -4,6 +4,9 @@ import sqlite3
 from threading import Thread
 from typing import Tuple
 
+from OpenSSL import SSL
+
+from CertGen import gen_cert
 from Common import *
 
 
@@ -42,10 +45,16 @@ class Server:
         self.socket: Optional[socket.socket] = None
         self.thread_accept: Optional[multiprocessing.Process] = None
         self.running: bool = False
-        self.start()
+        # Initialize context
+        self.ctx = SSL.Context(SSL.SSLv23_METHOD)
+        self.ctx.set_options(SSL.OP_NO_SSLv2)
+        self.ctx.set_verify(SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT, verify_cb)  # Demand a certificate
+        self.ctx.use_privatekey_file('server.pkey')
+        self.ctx.use_certificate_file('server.cert')
+        self.ctx.load_verify_locations('CA.cert')
 
     def start(self):
-        self.socket = socket.socket()
+        self.socket = SSL.Connection(self.ctx, socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(("0.0.0.0", self.port))
         self.socket.listen(self.max_client)
@@ -148,7 +157,9 @@ class Server:
 
 
 def main():
+    gen_cert("server")
     server = Server()
+    server.start()
     while True:
         try:
             pass

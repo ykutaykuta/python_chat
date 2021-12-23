@@ -4,6 +4,8 @@ from threading import Thread
 from typing import List
 
 from Common import *
+from CertGen import gen_cert
+from OpenSSL import SSL
 
 
 class Client:
@@ -17,6 +19,12 @@ class Client:
         self.socket_connected = False
         self.ack: Optional[bool] = None
         self.online_clients: List[str] = list()
+        # Initialize context
+        self.ctx = SSL.Context(SSL.SSLv23_METHOD)
+        self.ctx.set_verify(SSL.VERIFY_PEER, verify_cb)  # Demand a certificate
+        self.ctx.use_privatekey_file('client.pkey')
+        self.ctx.use_certificate_file('client.cert')
+        self.ctx.load_verify_locations('CA.cert')
 
     def wait_for_ack(self) -> bool:
         while self.socket_connected:
@@ -97,7 +105,7 @@ class Client:
     def socket_connect(self):
         if self.socket_connected:
             return
-        self.socket = socket.socket()
+        self.socket = SSL.Connection(self.ctx, socket.socket(socket.AF_INET, socket.SOCK_STREAM))
         self.socket.connect((self.server_addr, self.server_port))
         self.socket_connected = True
         self.thread_receive = Thread(target=self.receive_from_server)
@@ -191,7 +199,11 @@ class Client:
         pass
 
 
-if __name__ == "__main__":
+def main():
+    gen_cert("client")
     client = Client("127.0.0.1", 8000, "name", "password")
     while True:
         pass
+
+if __name__ == "__main__":
+    main()
