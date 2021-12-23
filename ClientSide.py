@@ -1,7 +1,6 @@
 import socket
 import time
 from threading import Thread
-
 from typing import List
 
 from Common import *
@@ -74,12 +73,16 @@ class Client:
         except Exception as e:
             print(e)
             return False
-        segments = [bytearray(chr(0).encode() + d[i:i+Define.MAX_SEG_LEN]) for i in range(0, len(d), Define.MAX_SEG_LEN)]
-        segments[0][0] += Define.SEG_START
-        segments[len(segments)-1][0] += Define.SEG_END
+        segments = [bytearray(chr(0).encode() + d[i:i + MAX_SEG_LEN]) for i in range(0, len(d), MAX_SEG_LEN)]
+        segments[0][0] += SEG_START
+        segments[len(segments) - 1][0] += SEG_END
         for idx, segment in enumerate(segments):
             segment[0] += idx
-            data = chr(MsgType.File.value).encode() + make_packet(self.name.encode()) + make_packet(receiver.encode()) + make_packet(segment)
+            data = chr(MsgType.File.value).encode() \
+                   + make_packet(self.name.encode()) \
+                   + make_packet(receiver.encode()) \
+                   + make_packet(file_name.encode()) \
+                   + make_packet(segment)
             self.socket.send(data)
         if self.wait_for_ack():
             print("successfully! update UI here")
@@ -108,18 +111,18 @@ class Client:
         if self.socket is not None:
             self.socket.close()
 
-    def handle_receive_file(self, sender: str, file_name: str, segment_dhr: int, data: bytes):
-        if segment_dhr & Define.SEG_START:
+    def handle_receive_file(self, sender: str, file_name: str, segment_dhr: int, segment_data: bytes):
+        if segment_dhr & SEG_START:
             self.ui_update_start_receive_file(sender, file_name)
         with open(file_name, "ab") as f:
-            f.write(data)
-        if segment_dhr & Define.SEG_END:
+            f.write(segment_data)
+        if segment_dhr & SEG_END:
             self.ui_update_complete_receive_file(sender, file_name)
 
     def receive_from_server(self):
         while self.socket_connected:
             try:
-                data = self.socket.recv(Define.MAX_TCP_PKT_LEN)
+                data = self.socket.recv(MAX_TCP_PKT_LEN)
                 msg_type = data[0]
                 if msg_type == MsgType.Ack:
                     ack_type = data[1]
@@ -134,7 +137,7 @@ class Client:
                             curr_pos += size
                             self.online_clients.append(name)
                         self.ui_update_list_online()
-                    else:   # case SignUp, Login, Logout, Message, File
+                    else:  # case SignUp, Login, Logout, Message, File
                         self.ack = data[2]
                 elif msg_type == MsgType.Message:
                     curr_pos = 1
@@ -147,7 +150,22 @@ class Client:
                     message = data[curr_pos:curr_pos + size].decode()
                     self.ui_update_message(sender, message)
                 elif msg_type == MsgType.File:
-                    pass
+                    curr_pos = 1
+                    size = int.from_bytes(data[curr_pos:curr_pos + 2], byteorder='big')
+                    curr_pos += 2
+                    sender = data[curr_pos:curr_pos + size].decode()
+                    curr_pos += size
+                    size = int.from_bytes(data[curr_pos:curr_pos + 2], byteorder='big')
+                    curr_pos = curr_pos + 2 + size
+                    size = int.from_bytes(data[curr_pos:curr_pos + 2], byteorder='big')
+                    file_name = data[curr_pos:curr_pos + size].decode()
+                    curr_pos += size
+                    size = int.from_bytes(data[curr_pos:curr_pos + 2], byteorder='big')
+                    curr_pos += 2
+                    segment_hdr = data[curr_pos]
+                    curr_pos += 1
+                    segment_data = data[curr_pos:curr_pos+size-1]
+                    self.handle_receive_file(sender, file_name, segment_hdr, segment_data)
             except Exception as e:
                 print(e)
 

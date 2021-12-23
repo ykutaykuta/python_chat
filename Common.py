@@ -1,14 +1,12 @@
 from enum import Enum
 from typing import Optional
 
-
-class Define:
-    MAX_TCP_PKT_LEN = 65535
-    MAX_NAME_LEN = 25
-    MAX_PASS_LEN = 25
-    MAX_SEG_LEN = 10240
-    SEG_START = 0x80
-    SEG_END = 0x40
+MAX_TCP_PKT_LEN = 65535
+MAX_NAME_LEN = 25
+MAX_PASS_LEN = 25
+MAX_SEG_LEN = 10240
+SEG_START = 0x80
+SEG_END = 0x40
 
 
 class MsgType(Enum):

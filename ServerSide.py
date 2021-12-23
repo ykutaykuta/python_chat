@@ -2,7 +2,6 @@ import multiprocessing
 import socket
 import sqlite3
 from threading import Thread
-
 from typing import Tuple
 
 from Common import *
@@ -89,7 +88,7 @@ class Server:
     def read_from_client(self, sock: socket.socket):
         while True:
             try:
-                data = sock.recv(Define.MAX_TCP_PKT_LEN)
+                data = sock.recv(MAX_TCP_PKT_LEN)
                 msg_type = data[0]
                 curr_pos = 1
                 if msg_type == MsgType.SignUp:
